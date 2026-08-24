@@ -1,6 +1,11 @@
 """Read-only Streamlit dashboard: tactic performance, bandit arm weights,
 attribution/uplift, recovery funnel, and reward-over-time. Every function
 here only reads — there is no button or action that writes to the database.
+
+Theme: black & white, minimal. Page-level CSS handles the surrounding
+chrome (fonts, dataframes, alerts, hover/fade animations); Altair charts
+render into their own SVG canvas that page CSS can't reach, so their axes,
+legend, and gridlines are themed separately via a registered Altair theme.
 """
 
 from __future__ import annotations
@@ -29,6 +34,131 @@ from tactics.registry import TACTICS
 st.set_page_config(page_title="Revenue Recovery Dashboard", layout="wide")
 
 CACHE_TTL_SECONDS = 30
+
+INK = "#111111"
+MUTED = "#6b6b6b"
+LINE = "#e5e5e5"
+GRID = "#eeeeee"
+
+# Fixed per-tactic identity (color + dash) for the reward-over-time chart.
+# Assigned once, in registry order, never re-derived from what happens to be
+# in a given render -- a tactic keeps the same look across every reload.
+# 4 grays x 3 dash patterns (coprime periods) gives 12 unique combinations
+# before any repeat, comfortably covering the 10 registered tactics.
+_GRAY_LEVELS = ["#111111", "#3f3f3f", "#6b6b6b", "#a3a3a3"]
+_DASH_PATTERNS = [[1, 0], [5, 3], [1, 3]]
+TACTIC_NAMES_ORDERED = [t.name for t in TACTICS]
+TACTIC_COLOR_RANGE = [_GRAY_LEVELS[i % len(_GRAY_LEVELS)] for i in range(len(TACTIC_NAMES_ORDERED))]
+TACTIC_DASH_RANGE = [_DASH_PATTERNS[i % len(_DASH_PATTERNS)] for i in range(len(TACTIC_NAMES_ORDERED))]
+
+
+def _minimal_altair_theme() -> dict:
+    font = "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+    return {
+        "config": {
+            "background": "transparent",
+            "view": {"stroke": "transparent"},
+            "axis": {
+                "domainColor": LINE,
+                "gridColor": GRID,
+                "gridDash": [1, 0],
+                "tickColor": LINE,
+                "labelColor": MUTED,
+                "titleColor": INK,
+                "labelFont": font,
+                "titleFont": font,
+                "labelFontSize": 11,
+                "titleFontSize": 12,
+                "titleFontWeight": 500,
+            },
+            "legend": {
+                "labelColor": INK,
+                "titleColor": INK,
+                "labelFont": font,
+                "titleFont": font,
+                "labelFontSize": 11,
+                "titleFontSize": 12,
+                "symbolStrokeWidth": 2,
+            },
+            "title": {"color": INK, "font": font, "fontWeight": 600, "fontSize": 13},
+        }
+    }
+
+
+alt.themes.register("minimal_bw", _minimal_altair_theme)
+alt.themes.enable("minimal_bw")
+
+
+def _inject_page_theme() -> None:
+    st.markdown(
+        """
+        <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        html, body, [class*="css"] {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        @keyframes fadeSlideIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        [data-testid="stMainBlockContainer"] {
+            animation: fadeSlideIn 0.5s ease-out;
+            padding-top: 2.5rem;
+            max-width: 1100px;
+        }
+
+        h1, h2, h3 { font-weight: 600 !important; letter-spacing: -0.01em; color: #111111 !important; }
+        h1 { font-size: 1.9rem !important; margin-bottom: 0.2rem !important; }
+
+        h2 {
+            position: relative;
+            padding-bottom: 0.5rem;
+            font-size: 1.05rem !important;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+        h2::after {
+            content: "";
+            position: absolute;
+            left: 0; bottom: 0;
+            height: 1px;
+            width: 0;
+            background: #111111;
+            animation: growLine 0.6s ease-out forwards;
+            animation-delay: 0.1s;
+        }
+        @keyframes growLine { to { width: 48px; } }
+
+        p, [data-testid="stCaptionContainer"] { color: #6b6b6b !important; }
+
+        #MainMenu, [data-testid="stToolbar"] { visibility: hidden; }
+
+        [data-testid="stDataFrame"] { border: 1px solid #e5e5e5 !important; border-radius: 4px; }
+        [data-testid="stDataFrame"] table tbody tr { transition: background-color 0.15s ease; }
+        [data-testid="stDataFrame"] table tbody tr:hover { background-color: #f7f7f7 !important; }
+
+        [data-testid="stAlert"] {
+            background-color: #f7f7f7 !important;
+            border: 1px solid #d9d9d9 !important;
+            border-left: 3px solid #111111 !important;
+            color: #111111 !important;
+            border-radius: 2px;
+            transition: opacity 0.3s ease;
+        }
+        [data-testid="stAlert"] svg { filter: grayscale(1); }
+
+        hr { border-color: #e5e5e5 !important; }
+
+        button, [data-testid="stElementToolbarButton"] { transition: opacity 0.15s ease; }
+        button:hover, [data-testid="stElementToolbarButton"]:hover { opacity: 0.65; }
+
+        [data-testid="stVegaLiteChart"] { animation: fadeSlideIn 0.6s ease-out; }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 @st.cache_data(ttl=CACHE_TTL_SECONDS)
@@ -170,6 +300,8 @@ def load_reward_over_time() -> pd.DataFrame:
 
 
 def render() -> None:
+    _inject_page_theme()
+
     st.title("AI Revenue Recovery — Dashboard")
     st.caption(
         f"Read-only — nothing here triggers a recovery action. "
@@ -185,7 +317,7 @@ def render() -> None:
             {"recovery_rate": "{:.1%}", "avg_reward": "₹{:.2f}", "avg_cost": "₹{:.2f}", "net_value": "₹{:.2f}"},
             na_rep="—",
         ),
-        width='stretch',
+        width="stretch",
         hide_index=True,
     )
 
@@ -197,11 +329,15 @@ def render() -> None:
     else:
         heatmap = (
             alt.Chart(bandit_df)
-            .mark_rect()
+            .mark_rect(stroke="#ffffff", strokeWidth=1)
             .encode(
                 x=alt.X("tactic_name:N", title="Tactic"),
                 y=alt.Y("segment_key:N", title="Segment"),
-                color=alt.Color("estimated_win_rate:Q", title="Est. win rate", scale=alt.Scale(scheme="greens", domain=[0, 1])),
+                color=alt.Color(
+                    "estimated_win_rate:Q",
+                    title="Est. win rate",
+                    scale=alt.Scale(scheme="greys", domain=[0, 1]),
+                ),
                 tooltip=[
                     "segment_key",
                     "tactic_name",
@@ -212,7 +348,7 @@ def render() -> None:
             )
             .properties(height=max(300, 20 * bandit_df["segment_key"].nunique()))
         )
-        st.altair_chart(heatmap, width='stretch')
+        st.altair_chart(heatmap, width="stretch")
 
     st.header("Attribution: control vs. treated")
     attribution_df = load_attribution()
@@ -224,7 +360,7 @@ def render() -> None:
                 {"control_recovery_rate": "{:.1%}", "treated_recovery_rate": "{:.1%}", "uplift_pct": "{:+.1f}pp"},
                 na_rep="—",
             ),
-            width='stretch',
+            width="stretch",
             hide_index=True,
         )
         low_data = attribution_df[attribution_df["confidence"] != "reliable"]
@@ -236,29 +372,44 @@ def render() -> None:
 
     st.header("Recovery funnel")
     funnel_df = load_funnel()
-    # st.bar_chart sorts categorical axes alphabetically by default, which
-    # scrambles a funnel's stage order -- an explicit Altair chart with
-    # sort=<stage list> keeps it in the actual failed -> triggered ->
-    # approved -> recovered sequence.
-    funnel_chart = (
+    stage_order = funnel_df["stage"].tolist()
+    # Ordinal (stage position carries meaning): one neutral, monotone lightness
+    # steps -- darkest at the widest/first stage, lightening as the funnel narrows.
+    funnel_grays = ["#111111", "#3f3f3f", "#6b6b6b", "#a3a3a3"][: len(stage_order)]
+    bars = (
         alt.Chart(funnel_df)
-        .mark_bar()
+        .mark_bar(cornerRadiusTopLeft=4, cornerRadiusTopRight=4, size=48)
         .encode(
-            x=alt.X("stage:N", title=None, sort=funnel_df["stage"].tolist()),
+            x=alt.X("stage:N", title=None, sort=stage_order, axis=alt.Axis(labelAngle=0)),
             y=alt.Y("count:Q", title="Accounts"),
+            color=alt.Color("stage:N", sort=stage_order, scale=alt.Scale(domain=stage_order, range=funnel_grays), legend=None),
             tooltip=["stage", "count"],
         )
     )
-    st.altair_chart(funnel_chart, width='stretch')
-    st.dataframe(funnel_df, width='stretch', hide_index=True)
+    labels = bars.mark_text(dy=-8, color=INK, fontSize=12, fontWeight=600).encode(text="count:Q")
+    st.altair_chart((bars + labels).properties(height=320), width="stretch")
+    st.dataframe(funnel_df, width="stretch", hide_index=True)
 
     st.header("Reward over time")
     reward_df = load_reward_over_time()
     if reward_df.empty:
         st.info("No finalized rewards yet — rewards appear once a recovery window closes and gets processed.")
     else:
-        pivoted = reward_df.pivot(index="date", columns="tactic_name", values="reward")
-        st.line_chart(pivoted)
+        color_scale = alt.Scale(domain=TACTIC_NAMES_ORDERED, range=TACTIC_COLOR_RANGE)
+        dash_scale = alt.Scale(domain=TACTIC_NAMES_ORDERED, range=TACTIC_DASH_RANGE)
+        line_chart = (
+            alt.Chart(reward_df)
+            .mark_line(strokeWidth=2)
+            .encode(
+                x=alt.X("date:T", title=None),
+                y=alt.Y("reward:Q", title="Avg reward (₹)"),
+                color=alt.Color("tactic_name:N", scale=color_scale, title="Tactic"),
+                strokeDash=alt.StrokeDash("tactic_name:N", scale=dash_scale, title="Tactic"),
+                tooltip=["date:T", "tactic_name:N", alt.Tooltip("reward:Q", format=".2f")],
+            )
+            .properties(height=380)
+        )
+        st.altair_chart(line_chart, width="stretch")
 
 
 render()
