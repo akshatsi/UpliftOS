@@ -3,17 +3,21 @@
 
     python seed.py
 
-Tactic selection here runs through the real `tactics.registry` and
-`bandit.thompson_sampling` modules (control accounts through
-`attribution.control_group`), so this doubles as an end-to-end integration
-check of those three. `agents/` and `bandit/updater.py` don't exist yet, so
-`guardrail_approved` is a placeholder and reward/uplift_indicator are left
-NULL — those are the daily batch updater's job, never computed at seed time.
+Not idempotent against an already-seeded DB — account IDs are deterministic
+(seed=42), so a second run would try to re-insert the same 500 accounts and
+hit the unique constraint. Delete the DB file first to reseed:
+
+    rm revenue_recovery.db && python seed.py
+
+`guardrail_approved` is a placeholder (True) since seeding doesn't run the
+real drafting/guardrail agents; reward/uplift_indicator are left NULL since
+those are the daily batch updater's job, never computed at seed time.
 """
 
 from __future__ import annotations
 
 import random
+import sys
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 
@@ -108,6 +112,18 @@ def _simulate_recovery_action(
 
 def main() -> None:
     init_db()
+
+    with session_scope() as db:
+        existing = db.query(Account).count()
+    if existing:
+        print(
+            f"Database already has {existing} accounts — seed.py isn't idempotent "
+            "(account IDs are deterministic, so re-running would collide on the "
+            "unique constraint). Delete the DB file first if you want to reseed:\n"
+            "  rm revenue_recovery.db && python seed.py"
+        )
+        sys.exit(1)
+
     now = datetime.now(timezone.utc)
     rng = random.Random(SEED)
 
