@@ -152,6 +152,27 @@ No API key needed — every Groq call in the suite is mocked
 (`pytest-mock`), and every test runs against a fresh in-memory database, never
 the dev `revenue_recovery.db` file.
 
+## Testbench (real data, real Groq calls)
+
+```bash
+python testbench.py
+```
+
+pytest proves correctness against mocked LLM calls on constructed edge cases.
+This proves the system behaves sensibly on realistic data with the real model
+actually talking — a curated set of hand-written scenarios (not random
+synthetic generation) run through the full real pipeline: control bypass,
+bandit selection, the real drafting/guardrail agents, persistence, outcome
+reporting, and reward finalization. It prints what tactic got picked, the
+actual drafted message, the guardrail's real verdict, and the computed reward
+for each. Needs a real `GROQ_API_KEY` and costs a small amount of real API
+usage; uses its own `testbench.db` so it never touches your seeded dev data.
+
+It also deliberately demonstrates a known gap: `prior_recovery_attempts`
+exists on the schema but nothing currently enforces it as a cap, so the
+"repeat episode" section shows the same account getting a second, independent
+recovery action after the first one's window closes, with no limit.
+
 ## Known limitations
 
 - **Synthetic data only.** `data/synthetic_generator.py` produces
