@@ -1,0 +1,338 @@
+/* ---- design tokens ------------------------------------------------------
+   Verified against WCAG AA (contrast ratios computed, not eyeballed):
+   white/secondary text on bg/surface all clear 7:1+. Raw accent (#6366F1)
+   is 4.30:1 on bg -- passes for large text/UI (>=3:1) but fails normal-text
+   AA (needs >=4.5:1), so a lighter tint (--accent-text, 6.04:1) exists
+   specifically for small accent-colored text (links, active labels).
+------------------------------------------------------------------------- */
+:root {
+  --bg: #0D0F12;
+  --surface: #12151A;
+  --surface-hover: #171B21;
+  --border: #1E2229;
+
+  --text-primary: #FFFFFF;
+  --text-secondary: #94A3B8;
+  --text-muted: #5B6472;
+
+  --accent: #6366F1;
+  --accent-text: #8285F4;
+  --accent-soft: rgba(99, 102, 241, 0.14);
+  --accent-soft-strong: rgba(99, 102, 241, 0.28);
+
+  --warning: #F59E0B;
+  --warning-soft: rgba(245, 158, 11, 0.12);
+
+  --radius: 6px;
+  --radius-sm: 4px;
+
+  --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--font);
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.page {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 32px 20px 64px;
+}
+
+/* ---- focus: the ONLY place a glow appears, deliberately ---------------- */
+:focus { outline: none; }
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--accent-soft);
+  border-radius: var(--radius-sm);
+}
+
+/* ---- header -------------------------------------------------------------*/
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 28px;
+  animation: fadeUp 0.5s var(--ease) both;
+}
+
+h1 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0 0 4px;
+}
+
+.subtitle {
+  color: var(--text-secondary);
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.header-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.muted {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color 0.15s var(--ease), border-color 0.15s var(--ease), transform 0.4s var(--ease);
+}
+.icon-btn:hover { color: var(--text-primary); border-color: var(--accent); }
+.icon-btn.spinning svg { animation: spin 0.6s linear; }
+
+/* ---- cards ---------------------------------------------------------------*/
+main {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 20px 22px;
+  animation: fadeUp 0.5s var(--ease) both;
+  animation-delay: calc(var(--delay, 0) * 70ms + 60ms);
+}
+
+.card-header { margin-bottom: 14px; }
+
+h2 {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 0 0 6px;
+  color: var(--text-primary);
+}
+
+.card-header p.muted {
+  font-size: 0.8rem;
+  margin: 0;
+  max-width: 70ch;
+}
+
+/* ---- tables ---------------------------------------------------------------*/
+.table-scroll { overflow-x: auto; }
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.data-table th {
+  text-align: left;
+  color: var(--text-secondary);
+  font-weight: 500;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.data-table td {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.data-table tbody tr {
+  transition: background-color 0.15s var(--ease);
+}
+.data-table tbody tr:hover { background-color: var(--surface-hover); }
+.data-table tbody tr:last-child td { border-bottom: none; }
+
+.data-table .num { text-align: right; }
+.data-table td.negative { color: var(--text-secondary); }
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.badge-reliable { background: var(--accent-soft); color: var(--accent-text); }
+.badge-low-data { background: var(--warning-soft); color: var(--warning); }
+
+/* ---- empty states & banners -----------------------------------------------*/
+.empty-state {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  padding: 24px 0;
+  text-align: center;
+}
+
+.banner {
+  margin-top: 14px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  border-left: 3px solid transparent;
+  animation: fadeUp 0.3s var(--ease) both;
+}
+.banner-warning {
+  background: var(--warning-soft);
+  border-left-color: var(--warning);
+  color: var(--text-primary);
+}
+
+/* ---- charts ----------------------------------------------------------------*/
+.chart-scroll { overflow-x: auto; }
+.chart-svg { display: block; width: 100%; height: auto; font-family: var(--font); }
+
+.chart-svg text {
+  fill: var(--text-secondary);
+  font-size: 10.5px;
+}
+.chart-svg .axis-line { stroke: var(--border); stroke-width: 1; }
+.chart-svg .grid-line { stroke: var(--border); stroke-width: 1; }
+
+.heat-cell {
+  stroke: var(--bg);
+  stroke-width: 2;
+  transition: opacity 0.15s var(--ease);
+  cursor: pointer;
+}
+.heat-cell:hover { opacity: 0.8; }
+
+.funnel-bar {
+  transition: opacity 0.15s var(--ease);
+  cursor: pointer;
+}
+.funnel-bar:hover { opacity: 0.85; }
+
+.funnel-label {
+  fill: var(--text-primary);
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.reward-line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.reward-dot {
+  cursor: pointer;
+}
+
+/* ---- legend -----------------------------------------------------------------*/
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.76rem;
+  color: var(--text-secondary);
+}
+
+.legend-swatch {
+  width: 18px;
+  height: 0;
+  border-top-width: 2px;
+  border-top-style: solid;
+  flex-shrink: 0;
+}
+
+/* ---- tooltip ------------------------------------------------------------------*/
+.tooltip {
+  position: fixed;
+  z-index: 50;
+  background: #1A1E25;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  font-size: 0.76rem;
+  line-height: 1.45;
+  color: var(--text-primary);
+  pointer-events: none;
+  max-width: 240px;
+  transform: translate(-50%, calc(-100% - 10px));
+  transition: opacity 0.1s var(--ease);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+.tooltip strong { color: var(--text-primary); }
+.tooltip span.muted { display: block; margin-top: 2px; }
+
+/* ---- animations ---------------------------------------------------------------*/
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes drawLine {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes growUp {
+  from { transform: scaleY(0); }
+  to   { transform: scaleY(1); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+}
+
+/* ---- responsive -----------------------------------------------------------------*/
+@media (max-width: 640px) {
+  .page { padding: 20px 14px 48px; }
+  .page-header { flex-direction: column; gap: 10px; }
+  h1 { font-size: 1.35rem; }
+  .card { padding: 16px 14px 18px; }
+}

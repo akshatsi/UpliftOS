@@ -115,3 +115,49 @@ class BaselinesResponse(BaseModel):
 class ErrorResponse(BaseModel):
     error: str
     code: str
+
+
+class TacticPerformanceRow(BaseModel):
+    tactic_name: str
+    deployments: int
+    recovery_rate: Optional[float]
+    avg_reward: Optional[float]
+    avg_cost: float
+    net_value: float
+
+
+class TacticPerformanceResponse(BaseModel):
+    tactics: list[TacticPerformanceRow]
+
+
+class FunnelStage(BaseModel):
+    stage: str
+    count: int
+
+
+class FunnelResponse(BaseModel):
+    stages: list[FunnelStage]
+
+
+class RewardPoint(BaseModel):
+    date: str
+    tactic_name: str
+    avg_reward: float
+
+
+class RewardOverTimeResponse(BaseModel):
+    points: list[RewardPoint]
+
+
+class AttributionRow(BaseModel):
+    segment_key: str
+    control_count: int
+    control_recovery_rate: Optional[float]
+    treated_count: int
+    treated_recovery_rate: Optional[float]
+    uplift_pct: Optional[float]
+    confidence: str
+
+
+class AttributionResponse(BaseModel):
+    rows: list[AttributionRow]

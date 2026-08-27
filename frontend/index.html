@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Revenue Recovery — Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="page">
+    <header class="page-header">
+      <div>
+        <h1>Revenue Recovery</h1>
+        <p class="subtitle">Read-only — nothing here triggers a recovery action.</p>
+      </div>
+      <div class="header-meta">
+        <span id="last-updated" class="muted">—</span>
+        <button id="refresh-btn" class="icon-btn" title="Refresh now" aria-label="Refresh">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+            <path d="M21 3v6h-6" />
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <main>
+      <section class="card" style="--delay:0">
+        <div class="card-header">
+          <h2>Tactic performance</h2>
+          <p class="muted">avg_reward is the bandit's own uplift-adjusted signal (per unit); net_value is raw recovered-minus-cost dollars (aggregate).</p>
+        </div>
+        <div class="table-scroll">
+          <table id="tactic-table" class="data-table">
+            <thead>
+              <tr>
+                <th>Tactic</th>
+                <th class="num">Deployments</th>
+                <th class="num">Recovery rate</th>
+                <th class="num">Avg reward</th>
+                <th class="num">Avg cost</th>
+                <th class="num">Net value</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card" style="--delay:1">
+        <div class="card-header">
+          <h2>Bandit arm weights</h2>
+          <p class="muted">Estimated win rate = alpha / (alpha + beta) per segment × tactic. Blank cells haven't been sampled yet.</p>
+        </div>
+        <div id="heatmap-empty" class="empty-state" hidden>No bandit state yet — run some recoveries first.</div>
+        <div class="chart-scroll">
+          <svg id="heatmap" class="chart-svg"></svg>
+        </div>
+      </section>
+
+      <section class="card" style="--delay:2">
+        <div class="card-header">
+          <h2>Attribution: control vs. treated</h2>
+        </div>
+        <div id="attribution-empty" class="empty-state" hidden>No attribution data yet — the daily batch updater (or an early-reported outcome) populates this.</div>
+        <div class="table-scroll">
+          <table id="attribution-table" class="data-table">
+            <thead>
+              <tr>
+                <th>Segment</th>
+                <th class="num">Control n</th>
+                <th class="num">Control rate</th>
+                <th class="num">Treated n</th>
+                <th class="num">Treated rate</th>
+                <th class="num">Uplift</th>
+                <th>Confidence</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div id="low-data-banner" class="banner banner-warning" hidden></div>
+      </section>
+
+      <section class="card" style="--delay:3">
+        <div class="card-header">
+          <h2>Recovery funnel</h2>
+        </div>
+        <div class="chart-scroll">
+          <svg id="funnel" class="chart-svg"></svg>
+        </div>
+      </section>
+
+      <section class="card" style="--delay:4">
+        <div class="card-header">
+          <h2>Reward over time</h2>
+        </div>
+        <div id="reward-empty" class="empty-state" hidden>No finalized rewards yet — rewards appear once a recovery window closes and gets processed.</div>
+        <div class="chart-scroll">
+          <svg id="reward-chart" class="chart-svg"></svg>
+        </div>
+        <div id="reward-legend" class="legend"></div>
+      </section>
+    </main>
+  </div>
+
+  <div id="tooltip" class="tooltip" hidden></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -7,9 +7,6 @@ groq
 numpy
 scipy
 apscheduler
-streamlit
-altair
-pandas
 pytest
 pytest-mock
 httpx

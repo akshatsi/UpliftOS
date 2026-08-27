@@ -9,8 +9,8 @@ causal attribution engine — a held-out 12% control group that never gets a
 real tactic — measures whether a tactic actually *caused* the recovery rather
 than just correlating with it. Everything runs on synthetic data (there's no
 real payment gateway); a FastAPI layer exposes the pipeline, a daily batch job
-closes the reward loop, and a read-only Streamlit dashboard makes the whole
-thing observable.
+closes the reward loop, and a read-only dashboard (a small static frontend,
+served by the same API) makes the whole thing observable.
 
 ## Architecture
 
@@ -46,7 +46,9 @@ thing observable.
         |  attribution/uplift.py: refreshes the control-vs-treated baseline per segment
         |  thompson_sampling.py:  alpha/beta update, persisted back to db/
         v
-  dashboard/app.py  (Streamlit, read-only, reloads db/ every 30s)
+  api/routes/stats.py  (GET /stats/*, aggregation over db/)
+        v
+  frontend/  (static HTML/CSS/JS, served by the API at /dashboard, read-only)
         tactic performance . bandit arm heatmap . attribution . recovery funnel . reward over time
 ```
 
@@ -68,12 +70,16 @@ to fire a lot more often. Everything else in `.env` has a working default
 
 ```bash
 python seed.py                                    # creates tables, seeds 500 accounts + 30 days of simulated outcomes
-uvicorn api.main:app --reload --port 8000          # API, from the project root
-streamlit run dashboard/app.py                     # dashboard, in a second terminal
+uvicorn api.main:app --reload --port 8000          # API + dashboard, from the project root
 ```
 
 Open `http://localhost:8000/docs` for interactive API docs, and
-`http://localhost:8501` for the dashboard.
+`http://localhost:8000/dashboard/` for the dashboard — both served by the
+same process, no second terminal needed. The dashboard is a static
+HTML/CSS/JS single-page app (`frontend/`, no build step, no framework) that
+fetches from the API's own `GET /stats/*`, `/bandit/state`, and
+`/attribution/baselines` endpoints; it auto-refreshes every 30s and has a
+manual refresh button.
 
 ## Simulating a full recovery cycle end to end
 
@@ -203,6 +209,20 @@ recovery action after the first one's window closes, with no limit.
 A few places in the spec were ambiguous or (in one case) self-contradictory;
 here's how they were resolved, in case the reasoning matters later:
 
+- **Dashboard: static frontend over Streamlit.** `frontend/` is plain
+  HTML/CSS/JS with no build step and no chart library — hand-rolled inline
+  SVG for the heatmap/funnel/line chart, served by the API itself via
+  `StaticFiles`. This meant three of the five panels (tactic performance,
+  funnel, reward-over-time) needed real endpoints under `GET /stats/*`,
+  since those used to be pandas queries run directly inside the Streamlit
+  script rather than exposed over HTTP at all. The dark theme's contrast
+  ratios were computed (WCAG relative-luminance formula), not eyeballed —
+  the raw accent color actually failed AA for normal text (4.30:1) despite
+  passing for large text/UI, so a lighter tint exists specifically for
+  small accent-colored text. The reward-over-time chart's 10 tactics use a
+  fixed (shade, dash-pattern) identity assigned once in registry order, the
+  same reasoning as the earlier grayscale version: dash pattern carries
+  identity that a "single restrained accent" can't for that many series.
 - **Structured output on Groq.** Unlike Anthropic's SDK, Groq's Python client
   has no `.parse()` helper — `agents/llm_client.py` builds a
   `response_format={"type": "json_schema", ...}` request by hand, then does

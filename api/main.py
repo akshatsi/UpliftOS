@@ -10,15 +10,20 @@ from __future__ import annotations
 import logging
 from contextlib import asynccontextmanager
 
+from pathlib import Path
+
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
 from api.errors import APIError
-from api.routes import accounts, attribution_baselines, bandit_state, outcomes, recovery
+from api.routes import accounts, attribution_baselines, bandit_state, outcomes, recovery, stats
 from bandit.updater import start_scheduler
 from db.session import engine, init_db
+
+FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("api.main")
@@ -54,6 +59,11 @@ app.include_router(recovery.router)
 app.include_router(outcomes.router)
 app.include_router(bandit_state.router)
 app.include_router(attribution_baselines.router)
+app.include_router(stats.router)
+
+# The dashboard frontend: a static single-page app served at /dashboard,
+# mounted after every API route above so it never shadows them.
+app.mount("/dashboard", StaticFiles(directory=FRONTEND_DIR, html=True), name="dashboard")
 
 
 @app.exception_handler(APIError)
